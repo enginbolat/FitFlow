@@ -7,50 +7,93 @@
 
 import SwiftUI
 
-
 struct OnboardingView: View {
-    @EnvironmentObject private var coordinator: AppCoordinator
-    @Binding var username: String
-    @State private var tempName: String = ""
+    @StateObject private var viewModel: OnboardViewModel
+    
+    @Injected(HealthStoreProtocol.self) private var healthStore
+    @Injected(GeminiServiceProtocol.self) private var geminiService
+    @Injected(TrackingServiceProtocol.self) private var trackingManager
+    @Injected(StorageServiceProtocol.self) private var storageService
+
+    init(coordinator: AppCoordinator) {
+        let geminiService = DependencyContainer.shared.resolve(GeminiServiceProtocol.self)
+        let storageService = DependencyContainer.shared.resolve(StorageServiceProtocol.self)
+        let healthStore = DependencyContainer.shared.resolve(HealthStoreProtocol.self)
+        
+        let viewModel = OnboardViewModel(
+            coordinator: coordinator,
+            healthStore: healthStore,
+            geminiService: geminiService,
+            storageService: storageService
+        )
+        
+        _viewModel = StateObject(wrappedValue: viewModel)
+    }
     
     var body: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "figure.walk")
-                .resizable()
-                .frame(width: 80, height: 90)
-                .foregroundColor(.primaryBrand)
-            
-            Text("FitFlow'a Hoş Geldin")
-                .font(.largeTitle)
-                .bold()
-            
-            Text("Programını kişiselleştirmek için adını girelim.")
-                .foregroundColor(.gray)
-            
-            TextField("Adın nedir?", text: $tempName)
-                .textFieldStyle(.roundedBorder)
-                .padding()
-            
-            Button(action: {
-                withAnimation {
-                    coordinator.replace(page: .Dasboard)
+        ZStack {
+            VStack(spacing: 30) {
+                ProgressView(value: Double(viewModel.step), total: 4)
+                    .padding()
+                    .tint(.green)
+                
+                switch viewModel.step {
+                    case 2: WhatIsGoalView(
+                        profileGoal: $viewModel.profile.goal
+                    )
+                    case 3: PhysicalInfoView(
+                        height: $viewModel.profile.height,
+                        weight: $viewModel.profile.weight,
+                        age: $viewModel.profile.age,
+                        isButtonDisabled: (viewModel.isLoadingPlan || viewModel.isLoadingHealthData)
+                    )
+                    default: PersonalInfoView(
+                        name: $viewModel.profile.name
+                    )
                 }
-            }) {
-                Text("Giriş Yap")
-                    .bold()
+                
+                Spacer()
+                
+                Button(action: viewModel.nextStep) {
+                    VStack {
+                        if viewModel.isLoadingPlan || viewModel.isLoadingHealthData {
+                            ProgressView()
+                                .tint(.white)
+                        } else {
+                            Text(LocalizedStringKey(viewModel.step == 3 ? LocalizableEnum.prepareProgram.rawValue : LocalizableEnum.continueButton.rawValue))
+                                .bold()
+                        }
+                    }
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(tempName.isEmpty ? .gray : Color.primaryBrand)
+                    .background(Color.primaryBrand)
                     .foregroundColor(.white)
-                    .cornerRadius(10)
+                    .cornerRadius(12)
+                }
+                .disabled(viewModel.isLoadingPlan || viewModel.isLoadingHealthData)
             }
-            .padding(.horizontal)
-            .disabled(tempName.isEmpty)
+            .padding()
+            
+            if(viewModel.isLoadingHealthData) {
+                LoaderView()
+            }
+            
+            if(viewModel.isLoadingPlan) {
+                Color.gray.opacity(0.5)
+                    .blur(radius: 5)
+                    .ignoresSafeArea()
+
+                AILoadingView()
+                    .allowsHitTesting(false)
+            }
         }
-        .padding()
     }
 }
 
-#Preview {
-    OnboardingView(username: .constant("Engin"))
-}
+ 
+ #Preview {
+     let coordinator = AppCoordinator()
+     
+     OnboardingView(coordinator: coordinator)
+ }
+

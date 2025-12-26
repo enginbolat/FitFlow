@@ -9,14 +9,10 @@ import SwiftUI
 import HealthKit
 
 struct ContentView: View {
-    @AppStorage("username") var username: String = ""
+    @EnvironmentObject var coordinator: AppCoordinator
     
     var body: some View {
-        if username.isEmpty {
-            OnboardingView(username: $username)
-        } else {
-            DashboardView(username: username)
-        }
+        CoordinatorView()
     }
 }
 

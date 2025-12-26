@@ -9,15 +9,19 @@ import SwiftUI
 import Combine
 
 enum Pages: Identifiable, Hashable {
+    case OnboardingSwipe
     case Onboarding
-    case Dasboard
-    case Detail(workout: Workout)
+    case Dashboard
+    case Detail(aiWorkout: DailyWorkout, nutrition: String)
+    case MealPlanDetailView(dailyMealPlan: DailyMealPlan)
     
     var id: String {
         switch self {
+        case .OnboardingSwipe: return "OnboardingSwipe"
         case .Onboarding: return "Onboarding"
-        case .Dasboard: return "Dasboard"
-        case .Detail(let workout): return "Detail_\(workout.id)"
+        case .Dashboard: return "Dashboard"
+        case .Detail(let aiWorkout, let nutrition): return "Detail_\(aiWorkout.id.uuidString)_\(nutrition.prefix(20))"
+        case .MealPlanDetailView(let meal): return "MealPlanDetailView_\(meal.id.uuidString)"
         }
     }
 }
@@ -39,20 +43,21 @@ enum FullScreenCover: String, Identifiable {
     case demo
 }
 
+@MainActor
 class AppCoordinator: ObservableObject {
-    // @Injected(StorageServiceProtocol.self) private var storageService
-    
-    @Published var root: Pages = .Onboarding
+    @Published var root: Pages = .OnboardingSwipe
     @Published var path: NavigationPath = NavigationPath()
     @Published var sheet: Sheet?
     @Published var fullScreenCover: FullScreenCover?
     
+    @Injected(StorageServiceProtocol.self) private var storageService
+    
     private var cancellables = Set<AnyCancellable>()
     
     init() {
-        // let value = storageService.get(forKey: .hasSeenOnboarding, as: Bool.self) ?? false
-        // if value { root = .Home }
-        // else { root = .Onboarding }
+        let value = storageService.getFromLocal(.hasSeenDashboard, as: Bool.self) ?? false
+        if value { root = .Dashboard }
+        else { root = .OnboardingSwipe }
         
         setupConnectivityMonitoring()
     }
@@ -103,26 +108,25 @@ class AppCoordinator: ObservableObject {
     }
     
     func refreshRootBasedOnStorage() {
-        /*
-         let value = storageService.get(forKey: .hasSeenOnboarding, as: Bool.self) ?? false
-         if value {
-             root = .Home
-         } else {
-             root = .Onboarding
-         }
-         path = NavigationPath()
-         */
+        let value = storageService.getFromLocal(.hasSeenDashboard, as: Bool.self) ?? false
+        if value {
+            root = .Dashboard
+        } else {
+            root = .OnboardingSwipe
+        }
+        path = NavigationPath()
     }
     
     @ViewBuilder
     func build(page: Pages) -> some View {
         switch page {
-            
-        // Onboard
-        case .Onboarding: OnboardingView(username: .constant(""))
-        case .Dasboard: DashboardView(username: "")
-        case .Detail(let workout):
-            WorkoutDetailView(workout: workout)
+        case .OnboardingSwipe: OnboardingSwipeView(coordinator: self)
+        case .Onboarding: OnboardingView(coordinator: self)
+        case .Dashboard: DashboardView(username: "")
+        case .Detail(let aiWorkout, let nutrition):
+            WorkoutDetailView(aiWorkout: aiWorkout, nutrition: nutrition)
+        case .MealPlanDetailView(let meal):
+            MealPlanDetailView(dailyMealPlan: meal)
         }
     }
         

@@ -8,27 +8,27 @@
 import SwiftUI
 
 struct ActivityLogSheet: View {
-    @ObservedObject var healthManager: HealthManager
+    @Injected(HealthStoreProtocol.self) private var healthStore
     
     var body: some View {
         VStack(alignment: .leading) {
-            Text("Yakılan Kalori Detayları")
+            Text(localizable: .caloriesBurnedDetails)
                 .font(.title2)
                 .fontWeight(.bold)
                 .padding(.top, 12)
                 .padding(.bottom, 5)
             
-            Text("Toplam: \(healthManager.totalActiveEnergy, specifier: "%.1f") kcal")
+            Text(String(format: NSLocalizedString("Toplam: %.1f kcal", comment: ""), healthStore.totalActiveEnergy))
                 .font(.headline)
                 .foregroundColor(.primaryBrand)
                 .padding(.bottom, 15)
             
-            if healthManager.todayActivityLogs.isEmpty {
+            if healthStore.todayActivityLogs.isEmpty {
                 ContentUnavailableView("Bugün Kayıtlı Antrenman Yok", systemImage: "figure.walk")
                     .frame(height: 200)
             } else {
                 List {
-                    ForEach(healthManager.todayActivityLogs) { log in
+                    ForEach(healthStore.todayActivityLogs) { log in
                         HStack {
                             VStack(alignment: .leading) {
                                 HStack(spacing: 2) {
@@ -57,12 +57,14 @@ struct ActivityLogSheet: View {
         }
         .padding()
         .onAppear {
-            healthManager.fetchTodayActiveEnergy()
+            Task {
+                await healthStore.fetchTodayActiveEnergy()
+            }
         }
     }
 }
 
 #Preview {
-    ActivityLogSheet(healthManager: .init())
+    ActivityLogSheet()
 }
 

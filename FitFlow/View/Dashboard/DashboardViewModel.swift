@@ -6,30 +6,62 @@
 //
 
 import Combine
+import SwiftUI
 
+@MainActor
 final class DashboardViewModel: ObservableObject {
-    let workoutViewModel: WorkoutViewModel
-    
     @Published var showingCalorieSheet = false
-    @Published var healthManager = HealthManager()
-    @Published var trackingManager = TrackingManager()
+    @Published var workoutPlan: AIWorkoutResponse? = nil
+    @Published var isLoadingPlan = false
     
-    init(workoutViewModel: WorkoutViewModel) {
-        self.workoutViewModel = workoutViewModel
+    private let healthStore: HealthStoreProtocol
+    private let trackingService: TrackingServiceProtocol
+    private let geminiService: GeminiServiceProtocol
+    private let storageService: StorageServiceProtocol
+    let goals = MacroGoals()
+    
+    init(
+        geminiService: GeminiServiceProtocol,
+        storageService: StorageServiceProtocol,
+        healthStore: HealthStoreProtocol,
+        trackingService: TrackingServiceProtocol,
+    ) {
+        self.healthStore = healthStore
+        self.trackingService = trackingService
+        self.geminiService = geminiService
+        self.storageService = storageService
     }
     
+    
     func handleRequestOrShowSheet() {
-        if healthManager.isAuthorized {
+        if healthStore.isAuthorized {
             showingCalorieSheet = true
-        }
-        else {
-            healthManager.requestAuthorization()
+        } else {
+            Task {
+                await healthStore.requestAuthorization()
+            }
         }
     }
     
     func handleOnAppear() {
-        healthManager.checkAuthorizationStatus()
-        if !healthManager.isAuthorized { healthManager.requestAuthorization() }
-        Task { await workoutViewModel.fetchWorkouts() }
+        workoutPlan = storageService.getFromLocal(.savedWorkoutPlan, as: AIWorkoutResponse.self)
+        Task {
+            await healthStore.requestAuthorization()
+        }
+    }
+    
+    var userAge: String {
+        guard let birthDate = healthStore.birthDate else {
+            return "--"
+        }
+        
+        let calendar = Calendar.current
+        let ageComponents = calendar.dateComponents([.year], from: birthDate, to: Date())
+        
+        if let year = ageComponents.year {
+            return "\(year)"
+        }
+        
+        return "--"
     }
 }

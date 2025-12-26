@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct CleanWorkoutRow: View {
-    @EnvironmentObject var trackingManager: TrackingManager
+    @Injected(TrackingServiceProtocol.self) private var trackingManager
     let workout: Workout
     
     var body: some View {
@@ -39,4 +39,3 @@ struct CleanWorkoutRow: View {
         .opacity(isCompleted ? 0.6 : 1.0)
     }
 }
-

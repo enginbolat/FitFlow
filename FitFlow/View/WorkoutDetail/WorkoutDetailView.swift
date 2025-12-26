@@ -8,44 +8,86 @@
 import SwiftUI
 
 struct WorkoutDetailView: View {
-    @EnvironmentObject var trackingManager: TrackingManager
-    let workout: Workout
+    @Injected(TrackingServiceProtocol.self) private var trackingManager
     
+    let title: String
+    let description: String
+    let exercises: [ExerciseDisplayModel]
+    let nutritionAdvice: String?
+    let workoutId: String
+    
+    init(workout: Workout) {
+        self.title = workout.title
+        self.description = workout.description
+        self.workoutId = String(workout.id)
+        self.nutritionAdvice = nil
+        self.exercises = workout.exercises.map {
+            ExerciseDisplayModel(name: $0.name, sets: "\($0.sets)", reps: "\($0.reps)", videoUrl: "")
+        }
+    }
+    
+    init(aiWorkout: DailyWorkout, nutrition: String?) {
+        self.title = aiWorkout.title
+        self.description = aiWorkout.day
+        self.workoutId = aiWorkout.id.uuidString
+        self.nutritionAdvice = nutrition
+        self.exercises = aiWorkout.exercises.map {
+            ExerciseDisplayModel(name: $0.name, sets: $0.sets, reps: $0.reps, videoUrl: $0.videoUrl)
+        }
+    }
+
     var body: some View {
-        let isCompleted = trackingManager.isWorkoutCompletedToday(id: workout.id)
+        let isCompleted = trackingManager.isWorkoutCompletedToday(id: Int(workoutId.prefix(5).filter(\.isNumber)) ?? 0)
         
         List {
-            Section(header: Text("Genel Bilgiler")) {
-                HStack { Image(systemName: "clock.fill"); Text("Süre:"); Spacer(); Text("\(workout.duration_min) dakika") }
-                HStack { Image(systemName: "note.text"); Text("Odak:"); Spacer(); Text(workout.description) }
+            Section(header: Text(localizable: .generalInformation)) {
+                HStack {
+                    Image(systemName: "calendar.badge.clock")
+                    Text(localizable: .focusDay)
+                    Spacer()
+                    Text(description).foregroundColor(.secondary)
+                }
             }
             
-            Section(header: Text("Hareketler & Detaylar")) {
-                ForEach(workout.exercises, id: \.id) { exercise in
+            if let advice = nutritionAdvice {
+                Section(header: Text(localizable: .aiNutritionAdvice)) {
+                    Text(advice)
+                        .font(.subheadline)
+                        .italic()
+                        .foregroundColor(.primaryBrand)
+                }
+            }
+            
+            Section(header: Text(localizable: .exercisesDetails)) {
+                ForEach(exercises) { exercise in
                     VStack(alignment: .leading, spacing: 8) {
                         Text(exercise.name).font(.headline)
                         HStack {
-                            Text("\(exercise.sets) Set").bold()
+                            Text(String(format: NSLocalizedString("%@ Set", comment: ""), exercise.sets)).bold()
                             Text("·")
-                            Text("\(exercise.reps) Tekrar").foregroundColor(.secondary)
+                            Text(String(format: NSLocalizedString("%@ Tekrar", comment: ""), exercise.reps)).foregroundColor(.secondary)
                         }
-                        Link(destination: URL(string: exercise.video_url)!) {
-                            HStack {
-                                Image(systemName: "play.circle.fill").foregroundColor(.red)
-                                Text("Form Videosunu İzle").foregroundColor(.secondaryBrand)
+                        
+                        if let url = exercise.videoUrl, let videoURL = URL(string: url) {
+                            Link(destination: videoURL) {
+                                HStack {
+                                    Image(systemName: "play.circle.fill").foregroundColor(.red)
+                                    Text(localizable: .watchFormVideo).font(.caption)
+                                }
                             }
                         }
                     }
+                    .padding(.vertical, 4)
                 }
             }
         }
-        .navigationTitle(workout.title)
+        .navigationTitle(title)
         
         VStack {
             Button {
-                trackingManager.toggleCompletion(for: workout.id)
+                trackingManager.toggleCompletion(for: Int(workoutId.prefix(5).filter(\.isNumber)) ?? 0)
             } label: {
-                Text(isCompleted ? "Bugünkü İdmanı Geri Al" : "İdmanı Tamamla")
+                Text(LocalizedStringKey(isCompleted ? LocalizableEnum.undo.rawValue : LocalizableEnum.completeWorkout.rawValue))
                     .bold()
                     .frame(maxWidth: .infinity)
                     .padding()
@@ -58,18 +100,24 @@ struct WorkoutDetailView: View {
     }
 }
 
+struct ExerciseDisplayModel: Identifiable {
+    let id = UUID()
+    let name: String
+    let sets: String
+    let reps: String
+    let videoUrl: String?
+}
 #Preview {
+    let mockManager = TrackingManager()
+    
     WorkoutDetailView(
-        trackingManager: .init(),
         workout: .init(
         id: 1,
         title: "title",
         description: "description",
         duration_min: 3,
         image_url: "",
-        exercises: [
-            .init(name: "name", sets: 2, reps: "2", video_url: "")
-        ]
+        exercises: []
     )
   )
 }

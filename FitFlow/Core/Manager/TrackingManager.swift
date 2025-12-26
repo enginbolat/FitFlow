@@ -8,21 +8,27 @@
 import HealthKit
 import Combine
 
+protocol TrackingServiceProtocol {
+    func saveCompletedWorkouts() -> Void
+    func loadCompletedWorkouts() -> Void
+    func toggleCompletion(for workoutId: Int) -> Void
+    func isWorkoutCompletedToday(id: Int) -> Bool
+}
+
 @MainActor
-class TrackingManager: ObservableObject {
+class TrackingManager: TrackingServiceProtocol {
     @Published var completedWorkouts: [Int: Date] = [:]
-    private let storageKey = "CompletedWorkouts"
     
     init() { loadCompletedWorkouts() }
     
     func saveCompletedWorkouts() {
         if let encoded = try? JSONEncoder().encode(completedWorkouts) {
-            UserDefaults.standard.set(encoded, forKey: storageKey)
+            UserDefaults.standard.set(encoded, forKey: StorageEnum.completedWorkouts.rawValue)
         }
     }
     
     func loadCompletedWorkouts() {
-        if let savedData = UserDefaults.standard.data(forKey: storageKey),
+        if let savedData = UserDefaults.standard.data(forKey: StorageEnum.completedWorkouts.rawValue),
            let decoded = try? JSONDecoder().decode([Int: Date].self, from: savedData) {
             self.completedWorkouts = decoded
         }

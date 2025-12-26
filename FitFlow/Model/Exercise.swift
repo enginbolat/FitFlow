@@ -7,15 +7,15 @@
 
 import Foundation
 
-struct Exercise: Identifiable, Codable {
+struct Exercise: Codable, Identifiable, Hashable {
     let id = UUID()
     let name: String
-    let sets: Int
+    let sets: String
     let reps: String
-    let video_url: String
+    let videoUrl: String?
     
-    private enum CodingKeys: String, CodingKey {
+    enum CodingKeys: String, CodingKey {
         case name, sets, reps
-        case video_url
+        case videoUrl = "video_url"
     }
 }

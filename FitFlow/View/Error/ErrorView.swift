@@ -14,9 +14,11 @@ struct ErrorView: View {
     var body: some View {
         VStack(spacing: 15) {
             Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 50)).foregroundColor(.red)
-            Text("Bağlantı Hatası").font(.title2)
+            Text(localizable: .connectionError).font(.title2)
             Text(error.localizedDescription).multilineTextAlignment(.center).foregroundColor(.secondary).padding(.horizontal)
-            Button("Tekrar Dene", action: retryAction).buttonStyle(.borderedProminent)
+            Button(action: retryAction) {
+                Text(localizable: .tryAgain)
+            }.buttonStyle(.borderedProminent)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

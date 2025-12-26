@@ -13,7 +13,7 @@ struct CircularProgressView: View {
     var body: some View {
         ZStack(alignment: .center) {
             Circle().stroke(Color(.systemGray4), lineWidth: 8)
-            Text("\(progress.description.split(separator: ".").first!)%")
+            Text("\(Int(progress * 100))%")
                 .font(.system(size: 14, weight: .bold, design: .rounded))
                 .opacity(0.6)
             Circle()

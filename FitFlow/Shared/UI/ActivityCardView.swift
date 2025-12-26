@@ -8,18 +8,22 @@
 import SwiftUI
 
 struct ActivityCardView: View {
-    @ObservedObject var healthManager: HealthManager
+    @Injected(HealthStoreProtocol.self) private var healthStore
     
     var body: some View {
-        let currentSteps = healthManager.stepCount
+        let currentSteps = healthStore.stepCount
         let goal = 10000.0
-        let progress = min(Double(currentSteps) / goal, 1.0)
+        var progress: Double {
+            let steps = Double(healthStore.stepCount)
+            let result = min(steps / goal, 1.0)
+            return result
+        }
         
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Image(systemName: "figure.walk")
                     .foregroundColor(.primaryBrand)
-                Text("Günlük Adımlar")
+                Text(localizable: .dailySteps)
                     .font(.headline)
             }
             HStack {
@@ -27,7 +31,7 @@ struct ActivityCardView: View {
                     Text("\(currentSteps)")
                         .font(.system(size: 44, weight: .heavy, design: .rounded))
                         .foregroundColor(.primaryBrand)
-                    Text("Hedef: \(Int(goal)) adım")
+                    Text(String(format: NSLocalizedString(LocalizableEnum.goalSteps.rawValue, comment: ""), Int(goal)))
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
@@ -43,5 +47,6 @@ struct ActivityCardView: View {
 }
 
 #Preview {
-    ActivityCardView(healthManager: .init())
+    ActivityCardView()
+        .environmentObject(AppCoordinator())
 }
